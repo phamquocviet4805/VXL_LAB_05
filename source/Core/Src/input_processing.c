@@ -65,9 +65,9 @@ void fsm_for_input_processing(void) {
 
 			//IF BUTTON 1 IS PRESSED -> NEXT MODE
 			if(buttonCurrState[0] == BUTTON_RELEASED && buttonPrevState[0] == BUTTON_PRESSED){
-				currMode = MODE_2_RED_MODIFY;
 				trafficAllOff();
 				resetIcrCnt();
+				currMode = MODE_2_RED_MODIFY;
 			}
 			break;
 		case MODE_2_RED_MODIFY: //====================== MODE 2 MODIDY RED LED ==============================================================
@@ -97,9 +97,9 @@ void fsm_for_input_processing(void) {
 
 			//IF BUTTON 1 IS PRESSED -> NEXT MODE
 			if(buttonCurrState[0] == BUTTON_RELEASED && buttonPrevState[0] == BUTTON_PRESSED){
-				currMode = MODE_3_AMBER_MODIFY;
 				trafficAllOff();
 				resetIcrCnt();
+				currMode = MODE_3_AMBER_MODIFY;
 			}
 			break;
 		case MODE_3_AMBER_MODIFY: //====================== MODE 3 MODIDY AMBERLED ==============================================================
@@ -129,9 +129,9 @@ void fsm_for_input_processing(void) {
 
 			//IF BUTTON 1 IS PRESSED -> NEXT MODE
 			if(buttonCurrState[0] == BUTTON_RELEASED && buttonPrevState[0] == BUTTON_PRESSED){
-				currMode = MODE_4_GREEN_MODIFY;
 				trafficAllOff();
 				resetIcrCnt();
+				currMode = MODE_4_GREEN_MODIFY;
 			}
 			break;
 		case MODE_4_GREEN_MODIFY: //====================== MODE 4 MODIDY GREEN LED ==============================================================
@@ -154,17 +154,18 @@ void fsm_for_input_processing(void) {
 				trafficAllOff();
 				resetIcrCnt();
 				resetTimerAndFlag();
+				resetState();
 				calLed(GREEN); // Calculate duration with priority red - green = amber
 				currMode = MODE_1_NORMAL;
-
 			}
 
 			//IF BUTTON 1 IS PRESSED -> NEXT MODE
 			if(buttonCurrState[0] == BUTTON_RELEASED && buttonPrevState[0] == BUTTON_PRESSED){
-				currMode = MODE_1_NORMAL;
 				trafficAllOff();
 				resetIcrCnt();
 				resetTimerAndFlag();
+				resetState();
+				currMode = MODE_1_NORMAL;
 			}
 			break;
 		default:

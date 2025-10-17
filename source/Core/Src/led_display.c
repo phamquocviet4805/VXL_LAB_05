@@ -21,6 +21,11 @@ enum trafficLight trafficState[2];
 
 int displayNum[2];
 
+void resetState(){
+	trafficState[0] = RED;
+	trafficState[1] = GREEN;
+}
+
 void trafficInit(void) {
 	trafficState[0] = RED;
 	trafficState[1] = GREEN;

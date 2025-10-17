@@ -32,4 +32,6 @@ void trafficProcessing(void);
 
 void blinkLed(int mode);
 
+void resetState();
+
 #endif /* INC_LED_DISPLAY_H_ */
