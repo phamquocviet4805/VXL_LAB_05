@@ -20,6 +20,12 @@ enum ButtonState {
     BUTTON_PRESSED_MORE_THAN_1_SECOND
 };
 
+enum Color {
+    RED = 1,
+    AMBER = 2,
+    GREEN = 3
+};
+
 enum MODE { MODE_1_NORMAL , MODE_2_RED_MODIFY , MODE_3_AMBER_MODIFY , MODE_4_GREEN_MODIFY };
 
 static enum MODE currMode = MODE_1_NORMAL;
@@ -65,25 +71,26 @@ void fsm_for_input_processing(void) {
 			}
 			break;
 		case MODE_2_RED_MODIFY: //====================== MODE 2 MODIDY RED LED ==============================================================
-			setFlagNormalMode(0);
-			setFlagModifyMode(1);
+			setFlagNormalMode(0); // Set flag  = 0 ( Mean turn off Normal mode )
+			setFlagModifyMode(1);	// Set flag  = 1 ( Mean change state to Modify Mode )
 			//Display 2-2 segment led for counting
 			displayLED7SEG_TB(increaseCounter);
 			displayLED7SEG_LR(increaseCounter);
 			displayLED7SEG_MODE(2); //Display mode
-			blinkLed(1); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
+			blinkLed(RED); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
 
 			//IF BUTTON 2 IS PRESSED -> INCREASE COUNTER
 			if(buttonCurrState[1] == BUTTON_RELEASED && buttonPrevState[1] == BUTTON_PRESSED){
-				increateButton();
+				increateButton(); // counter++
 			}
 
 			//IF BUTTON 3 IS PRESSED -> CONFIRM MODIFY & NEXT MODE
 			if(buttonCurrState[2] == BUTTON_RELEASED && buttonPrevState[2] == BUTTON_PRESSED){
-				setDurationRed(increaseCounter * 1000);
+				setDurationRed(increaseCounter * 1000); // duration  = counter * 1000
 				trafficAllOff();
-				resetIcrCnt();
-				resetTimerAndFlag();
+				resetIcrCnt(); // counter reset to 0
+				resetTimerAndFlag(); // reset to INIT state in Normal Mode
+				calLed(RED); // Calculate duration with priority red - green = amber
 				currMode = MODE_3_AMBER_MODIFY;
 
 			}
@@ -101,12 +108,12 @@ void fsm_for_input_processing(void) {
 			//Display 2-2 segment led for counting
 			displayLED7SEG_TB(increaseCounter);
 			displayLED7SEG_LR(increaseCounter);
-			displayLED7SEG_MODE(3); //Display mode
-			blinkLed(2); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
+			displayLED7SEG_MODE(3);
+			blinkLed(AMBER); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
 
 			//IF BUTTON 2 IS PRESSED -> INCREASE COUNTER
 			if(buttonCurrState[1] == BUTTON_RELEASED && buttonPrevState[1] == BUTTON_PRESSED){
-				increateButton();
+				increateButton(); // Increase counter
 			}
 
 			//IF BUTTON 3 IS PRESSED -> CONFIRM MODIFY & NEXT MODE
@@ -115,6 +122,7 @@ void fsm_for_input_processing(void) {
 				trafficAllOff();
 				resetIcrCnt();
 				resetTimerAndFlag();
+				calLed(AMBER); // Calculate duration with priority red - green = amber
 				currMode = MODE_4_GREEN_MODIFY;
 
 			}
@@ -133,7 +141,7 @@ void fsm_for_input_processing(void) {
 			displayLED7SEG_TB(increaseCounter);
 			displayLED7SEG_LR(increaseCounter);
 			displayLED7SEG_MODE(4); //Display mode
-			blinkLed(3); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
+			blinkLed(GREEN); //Blink 2 two modifying 1.RED 2.AMBER 3.GREEN
 
 			//IF BUTTON 2 IS PRESSED -> INCREASE COUNTER
 			if(buttonCurrState[1] == BUTTON_RELEASED && buttonPrevState[1] == BUTTON_PRESSED){
@@ -146,6 +154,7 @@ void fsm_for_input_processing(void) {
 				trafficAllOff();
 				resetIcrCnt();
 				resetTimerAndFlag();
+				calLed(GREEN); // Calculate duration with priority red - green = amber
 				currMode = MODE_1_NORMAL;
 
 			}

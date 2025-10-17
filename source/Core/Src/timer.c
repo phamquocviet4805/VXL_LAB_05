@@ -85,6 +85,15 @@ void initTimer(){
 	blinkTimer = blinkDuration / TIMER_CYCLE;
 }
 
+void calLed(int index){
+	if(index == 1)
+		amberDuration = abs(redDuration - greenDuration);
+	if(index == 2)
+		greenDuration = abs(redDuration - amberDuration);
+	if(index == 3)
+		amberDuration = abs(redDuration - greenDuration);
+}
+
 void resetTimerAndFlag(){
 	setTimer(0, getDurationRed());
 	setTimer(1, getDurationGreen());

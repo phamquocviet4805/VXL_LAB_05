@@ -75,13 +75,15 @@ void displayLED7SEG_LR(int number) {
     if (number < 0) number = 0;
     if (number > 99) number = 99;
 
+    // Divide number into 2 part
     int divPart = number / 10;
     int modPart = number % 10;
 
-    // CONVERT TO BINARY
+    // CONVERT TO BINARY AND STORE INTO ARRAY
     GPIO_PinState arr_1[4];
     GPIO_PinState arr_2[4];
 
+    // USING (&) BIT OPERATION
     for (int i = 3; i >= 0; --i) {
         arr_1[i] = ((divPart & 1) ? GPIO_PIN_SET : GPIO_PIN_RESET);
         divPart >>= 1;
@@ -89,7 +91,7 @@ void displayLED7SEG_LR(int number) {
         modPart >>= 1;
     }
 
-
+    // Display
     HAL_GPIO_WritePin(LED_SEG4_A_GPIO_Port, LED_SEG4_A_Pin, arr_1[3]);
     HAL_GPIO_WritePin(LED_SEG4_B_GPIO_Port, LED_SEG4_B_Pin, arr_1[2]);
     HAL_GPIO_WritePin(LED_SEG4_C_GPIO_Port, LED_SEG4_C_Pin, arr_1[1]);

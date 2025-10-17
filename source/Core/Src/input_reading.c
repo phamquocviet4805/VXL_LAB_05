@@ -40,6 +40,7 @@ static GPIO_PinState readButton(int i) {
 }
 
 void button_reading(void) {
+	// Two buffers for DEBOUNCING
     for(int i = 0; i < N0_OF_BUTTONS; i++) {
         debounceButtonBuffer2[i] = debounceButtonBuffer1[i];
         debounceButtonBuffer1[i] = readButton(i);
@@ -48,12 +49,14 @@ void button_reading(void) {
             buttonBuffer[i] = debounceButtonBuffer1[i];
 
         if(buttonBuffer[i] == BUTTON_IS_PRESSED) {
+        	// DURATION_FOR_AUTO_INCREASING = 100 ( Because TIME_CYCLE = 10ms )
             if(counterForButtonPress1s[i] < DURATION_FOR_AUTO_INCREASING) {
                 counterForButtonPress1s[i]++;
             }else{
-                flagForButtonPress1s[i] = 1;
+                flagForButtonPress1s[i] = 1; // FLAG when press more than 1s
             }
         }else{
+        	// When release the button
             counterForButtonPress1s[i] = 0;
             flagForButtonPress1s[i] = 0;
         }

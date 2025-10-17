@@ -15,6 +15,7 @@
 ../Core/Src/timer.c:78:5:getBlinkFlag	4	static
 ../Core/Src/timer.c:80:5:getTimer	16	static
 ../Core/Src/timer.c:82:6:initTimer	8	static
-../Core/Src/timer.c:88:6:resetTimerAndFlag	8	static
-../Core/Src/timer.c:94:6:initFlag	4	static
-../Core/Src/timer.c:99:6:HAL_TIM_PeriodElapsedCallback	16	static
+../Core/Src/timer.c:88:6:calLed	16	static
+../Core/Src/timer.c:97:6:resetTimerAndFlag	8	static
+../Core/Src/timer.c:103:6:initFlag	4	static
+../Core/Src/timer.c:108:6:HAL_TIM_PeriodElapsedCallback	16	static

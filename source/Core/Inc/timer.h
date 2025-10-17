@@ -34,4 +34,6 @@ void initFlag(void);
 
 void resetTimerAndFlag();
 
+void calLed(int index);
+
 #endif /* INC_TIMER_H_ */
