@@ -1,3 +1,0 @@
-../Core/Src/input_processing.c:38:6:increateButton	2
-../Core/Src/input_processing.c:44:6:resetIcrCnt	1
-../Core/Src/input_processing.c:48:6:fsm_for_input_processing	27
