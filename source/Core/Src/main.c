@@ -21,18 +21,21 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "sche.h"
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef enum { SEEK_BANG = 0, READ_CMD } ParserState;
+typedef enum { IDLE = 0, SEND_DATA, WAIT_OK } CommState;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define RB_SIZE 64
+#define TIMEOUT_MS 1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,48 +44,142 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 TIM_HandleTypeDef htim2;
 
-/* USER CODE BEGIN PV */
+UART_HandleTypeDef huart2;
 
+/* USER CODE BEGIN PV */
+uint8_t rx_byte, temp=0x52;
+uint8_t rb[RB_SIZE];
+uint16_t rb_head = 0, rb_tail = 0;
+
+uint32_t ADC_value = 0;
+
+char cmd[16];
+uint8_t cmd_len = 0;
+uint32_t next_send_ms = 0;
+
+uint8_t resend_flag = 0;
+
+ParserState parser_state = SEEK_BANG;
+CommState comm_state = WAIT_OK;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+void Init_UART(){
+	HAL_UART_Receive_IT(&huart2, &temp, 1);
+}
+
+void rb_put(uint8_t b) {
+    uint16_t next = (rb_head + 1) % RB_SIZE;
+    if (next != rb_tail) {
+    	rb[rb_head] = b; rb_head = next;
+    }
+}
+
+int rb_get(uint8_t *out) {
+    if (rb_head == rb_tail) return 0;
+    *out = rb[rb_tail];
+    rb_tail = (rb_tail + 1) % RB_SIZE;
+    return 1;
+}
+
+void command_parser_fsm(void)
+{
+    uint8_t b;
+    while (rb_get(&b)) {
+        switch (parser_state) {
+
+        case SEEK_BANG:
+            if (b == '!') {
+                parser_state = READ_CMD;
+                cmd_len = 0;
+            }
+            break;
+
+        case READ_CMD:
+            if (b == '#') {
+                cmd[cmd_len] = '\0';
+                for (uint8_t i = 0; i < cmd_len; i++)
+                    cmd[i] = toupper((unsigned char)cmd[i]);
+
+                if (strcmp(cmd, "RST") == 0)
+                    comm_state = SEND_DATA;
+                else if (strcmp(cmd, "OK") == 0)
+                    comm_state = IDLE;
+
+                parser_state = SEEK_BANG;
+            }
+            else if (cmd_len < sizeof(cmd) - 1 && b >= 0x20 && b <= 0x7E)
+                cmd[cmd_len++] = b;
+            else if (cmd_len >= sizeof(cmd) - 1)
+                parser_state = SEEK_BANG;
+            break;
+        }
+    }
+}
+
+void update_ADC_value(void)
+{
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    ADC_value = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+}
+
+void uart_communication_fsm(void)
+{
+    uint32_t now = HAL_GetTick();
+
+    switch (comm_state) {
+
+    case SEND_DATA:
+    {
+        char out[32];
+        update_ADC_value();
+        int n = snprintf(out, sizeof(out), "!ADC=%lu#\r\n", (unsigned long)ADC_value);
+        HAL_UART_Transmit(&huart2, (uint8_t*)out, n, 100);
+
+        resend_flag = 1;
+        next_send_ms = now + TIMEOUT_MS;
+        comm_state = WAIT_OK;
+        break;
+    }
+
+    case WAIT_OK:
+        if (resend_flag && (int32_t)(now - next_send_ms) >= 0) {
+            char out[32];
+            int n = snprintf(out, sizeof(out), "!ADC=%lu#\r\n", (unsigned long)ADC_value);
+            HAL_UART_Transmit(&huart2, (uint8_t*)out, n, 100);
+            next_send_ms = now + TIMEOUT_MS;
+        }
+        break;
+
+    case IDLE:
+    default:
+        resend_flag = 0;
+        break;
+    }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART2) {
+    	rb_put(rx_byte);
+        HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
+    }
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void Task1() {
-	HAL_GPIO_TogglePin(LED_1_GPIO_Port, LED_1_Pin);
-}
-
-void Task2() {
-	HAL_GPIO_TogglePin(LED_2_GPIO_Port, LED_2_Pin);
-}
-
-void Task3() {
-	HAL_GPIO_TogglePin(LED_3_GPIO_Port, LED_3_Pin);
-}
-
-void Task4() {
-	HAL_GPIO_TogglePin(LED_4_GPIO_Port, LED_4_Pin);
-}
-
-void Task5() {
-	HAL_GPIO_TogglePin(LED_5_GPIO_Port, LED_5_Pin);
-}
-
-void Led_Init(){
-	HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, RESET);
-	HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, RESET);
-	HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, RESET);
-	HAL_GPIO_WritePin(LED_4_GPIO_Port, LED_4_Pin, RESET);
-	HAL_GPIO_WritePin(LED_5_GPIO_Port, LED_5_Pin, RESET);
-}
 
 /* USER CODE END 0 */
 
@@ -116,23 +213,18 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM2_Init();
+  MX_ADC1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
-  SCH_Init();
-  Led_Init();
+  Init_UART();
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SCH_Add_Task(Task1, 0, 50);
-  SCH_Add_Task(Task2, 0, 100);
-  SCH_Add_Task(Task3, 0, 150);
-  SCH_Add_Task(Task4, 0, 200);
-  SCH_Add_Task(Task5, 0, 250);
-  //HAL_Delay(1000);
   while (1)
   {
-	  SCH_Dispatch_Tasks();
+	  command_parser_fsm();
+	  uart_communication_fsm();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -148,6 +240,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -174,6 +267,59 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -222,6 +368,39 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -236,17 +415,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LED_1_Pin|LED_2_Pin|LED_3_Pin|LED_4_Pin
-                          |LED_5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_BLINK_GPIO_Port, LED_BLINK_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LED_1_Pin LED_2_Pin LED_3_Pin LED_4_Pin
-                           LED_5_Pin */
-  GPIO_InitStruct.Pin = LED_1_Pin|LED_2_Pin|LED_3_Pin|LED_4_Pin
-                          |LED_5_Pin;
+  /*Configure GPIO pin : LED_BLINK_Pin */
+  GPIO_InitStruct.Pin = LED_BLINK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(LED_BLINK_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
