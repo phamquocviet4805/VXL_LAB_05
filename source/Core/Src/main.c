@@ -51,9 +51,11 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t rx_byte, temp=0x52;
+uint8_t rx_byte = 0x20, temp=0x52;
 uint8_t rb[RB_SIZE];
 uint16_t rb_head = 0, rb_tail = 0;
+
+uint8_t buffer_flag = 0;
 
 uint32_t ADC_value = 0;
 
@@ -64,7 +66,7 @@ uint32_t next_send_ms = 0;
 uint8_t resend_flag = 0;
 
 ParserState parser_state = SEEK_BANG;
-CommState comm_state = WAIT_OK;
+CommState comm_state = IDLE;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +119,8 @@ void command_parser_fsm(void)
                     comm_state = IDLE;
 
                 parser_state = SEEK_BANG;
+            }else if (b == '!'){
+            	cmd_len = 0;
             }
             else if (cmd_len < sizeof(cmd) - 1 && b >= 0x20 && b <= 0x7E)
                 cmd[cmd_len++] = b;
@@ -173,6 +177,7 @@ void uart_communication_fsm(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART2) {
     	rb_put(rx_byte);
+    	buffer_flag = 1;
         HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
     }
 }
@@ -223,7 +228,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  command_parser_fsm();
+	  if ( buffer_flag == 1) {
+		  command_parser_fsm();
+		  buffer_flag = 0;
+	  }
 	  uart_communication_fsm();
     /* USER CODE END WHILE */
 
